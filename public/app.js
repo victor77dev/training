@@ -88,7 +88,7 @@ const DEFAULT_CONFIG = {
 };
 // Values offered in each pick list. A saved value not in the list is added to it.
 const range = (from, to, step) => { const out = []; for (let v = from; v <= to + 1e-9; v += step) out.push(Math.round(v * 10) / 10); return out; };
-const SECS = [...range(0.1, 1, 0.1), 1.2, 1.5, 1.8, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 10];
+const SECS = [...range(0.1, 2, 0.1), 2.5, 3, 3.5, 4, 5, 6, 7, 8, 10];
 const fmtSec = (v) => `${v.toFixed(1)} s`;
 const STEPPERS = {
   length:    { t: 'Show cue for', s: 'Seconds on screen', values: SECS, fmt: fmtSec },
