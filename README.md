@@ -44,6 +44,7 @@ On the big screen, tap **Enable sound & full screen** once, because browsers blo
 - Duration: a number of cues (or unlimited) or a fixed time, multiple sets with rest, and a start countdown.
 - Results: cues shown, active time, average/fastest/slowest reaction, a chart per cue, a breakdown per cue,
   and one-tap Repeat.
+- App theme: light by default (even in phone Dark Mode). The ☀️/🌙/🌗 button switches Light / Dark / Auto.
 - Saved drills (stored in the browser). Keeps the screen awake where supported.
 - Keyboard during a session: Space/Enter = tap, P = pause, Esc = stop.
 
@@ -73,4 +74,4 @@ server.js          optional local server + message relay
 - Scanning QR codes needs the camera, which browsers only allow over HTTPS (GitHub Pages) or `localhost`.
   On the plain `http://` LAN address, use the copy & paste option in the pairing dialog.
 - A TV browser usually has no camera, so use the pairing code (internet) or the local code.
-- After an update, the hosted app may show the previous version once. The new one loads on the next launch.
+- When online, the app always loads the latest version; the offline copy is used only without a connection.
