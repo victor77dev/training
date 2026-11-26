@@ -21,6 +21,15 @@
 
   <main class="setup-body">
     <section class="card">
+      <h2>Saved drills</h2>
+      <ul id="presetList" class="presets"></ul>
+      <div class="preset-save">
+        <input id="presetName" type="text" placeholder="Save current settings as…" maxlength="40">
+        <button id="presetSaveBtn" type="button" class="btn small">Save</button>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Cues</h2>
       <p class="hint">Pick what can appear. Turn on 🔊 to have it called out loud too.</p>
       <div id="cats"></div>
@@ -72,14 +81,6 @@
       <div class="row" data-stepper="countdown"></div>
     </section>
 
-    <section class="card">
-      <h2>Saved drills</h2>
-      <div class="preset-save">
-        <input id="presetName" type="text" placeholder="Name this drill" maxlength="40">
-        <button id="presetSaveBtn" type="button" class="btn small">Save</button>
-      </div>
-      <ul id="presetList" class="presets"></ul>
-    </section>
   </main>
 
   <footer class="startbar">
