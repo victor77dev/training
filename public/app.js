@@ -765,6 +765,11 @@ Net.onChange = onNetChange;
 Net.onError = toast;
 syncConnUi();
 
+// Offline support (service workers need HTTPS or localhost)
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Service worker not registered', e));
+}
+
 // Detect the local relay, then restore a previous connection (e.g. after a reload)
 Net.detectRelay().then(() => {
   const prev = Net.restore();
