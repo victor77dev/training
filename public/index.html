@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0e1116">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Reaction Trainer</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ SETUP ============ -->
+<section id="setup" class="screen">
+  <header class="topbar">
+    <h1>Reaction <span>Trainer</span></h1>
+    <button id="connBtn" class="pill" type="button"><span class="dot"></span><span id="connLabel">Connect</span></button>
+  </header>
+
+  <main class="setup-body">
+    <section class="card">
+      <h2>Cues</h2>
+      <p class="hint">Pick what can appear. Turn on 🔊 to have it called out loud too.</p>
+      <div id="cats"></div>
+      <div class="opts">
+        <label class="switch"><input type="checkbox" data-opt="combine"><span></span>Colour the symbols (arrow + colour together)</label>
+        <label class="switch"><input type="checkbox" data-opt="noRepeat"><span></span>Never show the same cue twice in a row</label>
+        <label class="switch"><input type="checkbox" data-opt="beep"><span></span>Beep on each cue</label>
+        <label class="switch"><input type="checkbox" data-opt="audioOnly"><span></span>Audio only (hide visuals)</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Timing</h2>
+      <div class="seg" data-seg="mode">
+        <button type="button" data-val="timed">⏱ Timed</button>
+        <button type="button" data-val="touch">👆 Tap to advance</button>
+      </div>
+      <p class="hint" data-show="mode=touch">Cue stays until you tap the screen. Your reaction time is measured.</p>
+      <div data-show="mode=timed">
+        <div class="row" data-stepper="length"></div>
+        <label class="switch"><input type="checkbox" data-opt="randomLength"><span></span>Random length</label>
+        <div class="row sub" data-stepper="lengthMax" data-show="randomLength"></div>
+      </div>
+      <div class="row" data-stepper="delay"></div>
+      <label class="switch"><input type="checkbox" data-opt="randomDelay"><span></span>Random gap</label>
+      <div class="row sub" data-stepper="delayMax" data-show="randomDelay"></div>
+    </section>
+
+    <section class="card">
+      <h2>Duration</h2>
+      <div class="seg" data-seg="durationType">
+        <button type="button" data-val="rounds">🔁 Rounds</button>
+        <button type="button" data-val="time">⌛ Time</button>
+      </div>
+      <div data-show="durationType=rounds">
+        <div class="row" data-stepper="rounds" data-hide="unlimited"></div>
+        <label class="switch"><input type="checkbox" data-opt="unlimited"><span></span>Unlimited (stop manually)</label>
+      </div>
+      <div class="row" data-stepper="time" data-show="durationType=time"></div>
+      <div class="row" data-stepper="sets"></div>
+      <div class="row sub" data-stepper="rest" data-show="sets>1"></div>
+      <div class="row" data-stepper="countdown"></div>
+    </section>
+
+    <section class="card">
+      <h2>Saved drills</h2>
+      <div class="preset-save">
+        <input id="presetName" type="text" placeholder="Name this drill" maxlength="40">
+        <button id="presetSaveBtn" type="button" class="btn small">Save</button>
+      </div>
+      <ul id="presetList" class="presets"></ul>
+    </section>
+  </main>
+
+  <footer class="startbar">
+    <div id="summary" class="summary"></div>
+    <button id="startBtn" type="button" class="btn primary big">▶ Start</button>
+  </footer>
+</section>
+
+<!-- ============ RUN (fullscreen stage) ============ -->
+<section id="run" class="screen" hidden>
+  <div id="stage" class="stage stim"></div>
+  <div class="hud">
+    <div id="hudInfo" class="hud-info"></div>
+    <div class="hud-btns">
+      <button id="pauseBtn" type="button" class="hud-btn" aria-label="Pause">❚❚</button>
+      <button id="stopBtn" type="button" class="hud-btn" aria-label="Stop">■</button>
+    </div>
+  </div>
+  <div id="pausedOverlay" class="paused-overlay" hidden>
+    <div>Paused</div>
+    <button id="resumeBtn" type="button" class="btn primary big">▶ Resume</button>
+  </div>
+</section>
+
+<!-- ============ STATS ============ -->
+<section id="stats" class="screen" hidden>
+  <header class="topbar"><h1>Session <span>results</span></h1></header>
+  <main id="statsBody" class="setup-body"></main>
+  <footer class="startbar" id="statsActions">
+    <button id="editBtn" type="button" class="btn">⚙ Edit</button>
+    <button id="repeatBtn" type="button" class="btn primary big">↻ Repeat</button>
+  </footer>
+</section>
+
+<!-- ============ DISPLAY WAITING ============ -->
+<section id="display" class="screen dark" hidden>
+  <button id="displayExit" type="button" class="corner-btn">✕ Exit display mode</button>
+  <div class="display-wait">
+    <p class="muted">On your phone, open this same address, tap <b>Connect → Control a display</b> and enter:</p>
+    <div id="displayCode" class="code">----</div>
+    <p id="displayStatus" class="status">Waiting for a controller…</p>
+    <button id="unlockBtn" type="button" class="btn primary">🔊 Tap to enable sound &amp; full screen</button>
+  </div>
+</section>
+
+<!-- ============ REMOTE CONTROL ============ -->
+<section id="remote" class="screen" hidden>
+  <header class="topbar"><h1>Remote <span>control</span></h1><span id="remoteConn" class="pill"></span></header>
+  <main class="remote-body">
+    <div id="mirror" class="mirror stim"></div>
+    <div id="remoteInfo" class="remote-info"></div>
+    <button id="remoteTap" type="button" class="btn primary huge" hidden>TAP</button>
+    <div class="remote-btns">
+      <button id="remotePause" type="button" class="btn big">❚❚ Pause</button>
+      <button id="remoteStop" type="button" class="btn big danger">■ Stop</button>
+    </div>
+  </main>
+</section>
+
+<!-- ============ CONNECT SHEET ============ -->
+<dialog id="connDialog" class="sheet">
+  <form method="dialog">
+    <h2>Use multiple devices</h2>
+    <p class="hint">All devices must be on the same WiFi and open the address the server printed (e.g. <code id="hostHint"></code>).</p>
+    <div id="connIdle">
+      <button id="beDisplay" type="button" class="btn big wide">📺 Use this device as the display</button>
+      <div class="or">or</div>
+      <label class="lbl" for="codeInput">Control a display — enter its code</label>
+      <div class="preset-save">
+        <input id="codeInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="1234">
+        <button id="joinBtn" type="button" class="btn primary">Connect</button>
+      </div>
+    </div>
+    <div id="connActive" hidden>
+      <p id="connActiveText"></p>
+      <button id="disconnectBtn" type="button" class="btn wide danger">Disconnect</button>
+    </div>
+    <p id="connError" class="error" hidden></p>
+    <button value="close" class="btn wide ghost">Close</button>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
