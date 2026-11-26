@@ -4,22 +4,34 @@ A mobile-friendly reaction / agility training web app. Pick cues (colours, arrow
 numbers, letters, shapes), timing and duration, then train. Results are shown at the end.
 One phone can act as a remote for a bigger screen (TV, tablet, laptop).
 
-## Run
+## Use it
 
-```bash
-npm start            # or: node server.js   (Node 18+, no dependencies)
-```
+**Hosted:** `https://victor77dev.github.io/training/` (after GitHub Pages is enabled, see below).
+Open it once while online. After that it also works offline, and you can add it to your home screen.
 
-The server prints a `Network:` address such as `http://192.168.x.x:8080`.
-Open that on any device on the **same WiFi**. (Use `PORT=3000 npm start` to change the port.)
+**Local:** `npm start` (Node 18+, no dependencies) and open the `Network:` address it prints.
 
-## Use a big screen
+## Connect a big screen
 
-1. On the big screen open the address, then tap **Connect → Use this device as the display**.
-   A 4-digit code appears. Tap **Enable sound & full screen** once.
-2. On your phone open the same address, tap **Connect → Control a display** and enter the code.
-3. Set up the drill on the phone and tap **📺 Start on display**. The phone becomes a remote with a live
-   preview, Pause/Resume, Stop, plus a TAP button in tap-to-advance mode. Results appear on both devices.
+Tap **Connect** on both devices. On the big screen choose how to pair:
+
+| Method | Needs | How |
+|---|---|---|
+| **Pairing code** | Internet on both devices | The big screen shows a 6-digit code. Enter it on the phone. |
+| **QR code** | Same WiFi or hotspot, a camera on the big screen. No internet needed. | The big screen shows a QR code. The phone uses **Scan QR from the big screen** and then shows a reply QR, which the big screen scans with **Scan the phone's reply**. |
+| **Local code** | `npm start` on a computer, same WiFi | Only shown when the app is opened from the local server. The big screen shows a 4-digit code. |
+
+Then set up the drill on the phone and tap **📺 Start on display**. The phone becomes a remote with a live
+preview, Pause/Resume, Stop, and a TAP button in tap-to-advance mode. Results appear on both devices.
+On the big screen, tap **Enable sound & full screen** once, because browsers block sound until you tap.
+
+### How the connection works
+
+- **Pairing code and QR code** use a WebRTC data channel: a direct, encrypted link between the two browsers.
+  The code or QR only carries the short setup message (the "handshake"). The pairing code uses the free
+  [PeerJS](https://peerjs.com/) cloud service for that. QR codes carry it themselves, so no server is involved.
+- **Local code** sends every message through `server.js` (Server-Sent Events + POST).
+- Bluetooth is not used. Browsers don't allow phone-to-phone Bluetooth or WiFi Direct.
 
 ## Features
 
@@ -33,9 +45,30 @@ Open that on any device on the **same WiFi**. (Use `PORT=3000 npm start` to chan
 - Saved drills (stored in the browser). Keeps the screen awake where supported.
 - Keyboard during a session: Space/Enter = tap, P = pause, Esc = stop.
 
+## GitHub Pages setup (one time)
+
+1. The repo must be public (or on a paid plan).
+2. Go to **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+3. Push to `main`. `.github/workflows/pages.yml` publishes the `public/` folder.
+
+## Project layout
+
+```
+public/            the app (served as-is, no build step)
+  index.html       screens and dialogs
+  style.css
+  app.js           setup UI, session engine, stats, remote/display logic
+  net.js           connection layer: local relay, online code (PeerJS), QR (manual WebRTC)
+  pair.js          QR drawing/scanning and the two-step pairing flow
+  sw.js            offline caching
+  vendor/          qrcode-generator, jsQR, PeerJS (see vendor/README.md)
+server.js          optional local server + message relay
+```
+
 ## Notes
 
-- Reaction times are most accurate when you tap the display itself. Taps from the remote include WiFi latency.
-- Bluetooth is not used. Browsers cannot pair phones directly, so devices talk through this small server
-  over your local network.
-- The screen-awake lock needs HTTPS or localhost. Over plain LAN HTTP, set the screen timeout on the display device instead.
+- Reaction times are most accurate when you tap the display itself. Taps from the remote include network delay.
+- Scanning QR codes needs the camera, which browsers only allow over HTTPS (GitHub Pages) or `localhost`.
+  On the plain `http://` LAN address, use the copy & paste option in the pairing dialog.
+- A TV browser usually has no camera, so use the pairing code (internet) or the local code.
+- After an update, the hosted app may show the previous version once. The new one loads on the next launch.
