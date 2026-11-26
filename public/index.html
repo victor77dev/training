@@ -111,7 +111,7 @@
 <section id="display" class="screen dark" hidden>
   <button id="displayExit" type="button" class="corner-btn">✕ Exit display mode</button>
   <div class="display-wait">
-    <p class="muted">On your phone, open this same address, tap <b>Connect → Control a display</b> and enter:</p>
+    <p id="displayHint" class="muted">On your phone, open this app, tap <b>Connect</b> and enter:</p>
     <div id="displayCode" class="code">----</div>
     <p id="displayStatus" class="status">Waiting for a controller…</p>
     <button id="unlockBtn" type="button" class="btn primary">🔊 Tap to enable sound &amp; full screen</button>
@@ -135,14 +135,18 @@
 <!-- ============ CONNECT SHEET ============ -->
 <dialog id="connDialog" class="sheet">
   <form method="dialog">
-    <h2>Use multiple devices</h2>
-    <p class="hint">All devices must be on the same WiFi and open the address the server printed (e.g. <code id="hostHint"></code>).</p>
+    <h2>Connect devices</h2>
+    <p class="hint">Run the drill on a bigger screen and control it from your phone.</p>
     <div id="connIdle">
-      <button id="beDisplay" type="button" class="btn big wide">📺 Use this device as the display</button>
-      <div class="or">or</div>
-      <label class="lbl" for="codeInput">Control a display — enter its code</label>
+      <h3 class="sub-h">📺 This device is the big screen</h3>
+      <div class="choice-list">
+        <button id="dispOnline" type="button" class="choice"><b>Show a pairing code</b><small>Needs internet</small></button>
+        <button id="dispRelay" type="button" class="choice" hidden><b>Show a local code</b><small>Via the server on this network, no internet</small></button>
+      </div>
+      <h3 class="sub-h">📱 This device is the remote</h3>
+      <label class="lbl" for="codeInput">Enter the code shown on the big screen</label>
       <div class="preset-save">
-        <input id="codeInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="1234">
+        <input id="codeInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="off">
         <button id="joinBtn" type="button" class="btn primary">Connect</button>
       </div>
     </div>

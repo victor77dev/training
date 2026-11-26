@@ -634,12 +634,11 @@ function onRemoteStatus(m) {
 }
 
 /* ------------------------------ Display side -------------------------- */
-function enterDisplayMode(mode = 'relay') {
+function enterDisplayMode(mode) {
   Net.start(mode, 'display', randomCode(TRANSPORTS[mode].codeLength));
   showDisplayWait();
 }
 function showDisplayWait() {
-  $('#displayCode').textContent = Net.code || '----';
   session?.stop();
   show('display');
   syncConnUi();
@@ -670,49 +669,73 @@ function onNetMessage(m) {
 
 function onNetChange() { syncConnUi(); renderSummary(); }
 
+const MODE_NAMES = { relay: 'local server', online: 'online code', qr: 'QR pairing' };
+
 function syncConnUi() {
   const btn = $('#connBtn'), label = $('#connLabel');
+  const name = Net.mode === 'qr' ? 'QR display' : `Display ${Net.code}`;
   btn.classList.remove('on', 'wait');
   if (!Net.role) label.textContent = 'Connect';
-  else if (Net.isDisplay) { label.textContent = `Display ${Net.code}`; btn.classList.add(Net.online ? 'on' : 'wait'); }
-  else {
-    const ok = Net.hasDisplay;
-    label.textContent = ok ? `Display ${Net.code}` : `Waiting ${Net.code}…`;
-    btn.classList.add(ok ? 'on' : 'wait');
+  else if (Net.isDisplay) {
+    label.textContent = Net.mode === 'qr' ? 'QR display' : `Display ${Net.code}`;
+    btn.classList.add(Net.hasController || (Net.online && Net.mode !== 'qr') ? 'on' : 'wait');
+  } else {
+    label.textContent = Net.hasDisplay ? name : 'Finding display…';
+    btn.classList.add(Net.hasDisplay ? 'on' : 'wait');
   }
   const rc = $('#remoteConn');
   rc.className = `pill ${Net.hasDisplay ? 'on' : 'wait'}`;
-  rc.innerHTML = `<span class="dot"></span>${Net.hasDisplay ? `Display ${Net.code}` : 'Display offline'}`;
+  rc.innerHTML = `<span class="dot"></span>${Net.hasDisplay ? name : 'Display offline'}`;
 
-  if (Net.isDisplay) {
-    const st = $('#displayStatus');
-    $('#displayCode').textContent = Net.code;
-    if (!Net.online) { st.textContent = 'Connecting to server…'; st.className = 'status'; }
-    else if (Net.peers.controller > 0) { st.textContent = '✓ Phone connected — waiting for a drill'; st.className = 'status ok'; }
-    else { st.textContent = 'Waiting for a controller…'; st.className = 'status'; }
-  }
+  if (Net.isDisplay) syncDisplayScreen();
+
   // dialog state
   $('#connIdle').hidden = !!Net.role; $('#connActive').hidden = !Net.role;
-  $('#connActiveText').innerHTML = Net.isDisplay ? `This device is <b>display ${Net.code}</b>.`
-    : Net.isController ? `Controlling <b>display ${Net.code}</b> — ${Net.hasDisplay ? 'connected ✓' : 'display not found yet'}.` : '';
+  $('#dispRelay').hidden = !Net.relayAvailable;
+  $('#codeInput').placeholder = Net.relayAvailable ? '6-digit or local 4-digit code' : '123456';
+  $('#connActiveText').innerHTML = !Net.role ? ''
+    : Net.isDisplay ? `This device is the <b>big screen</b> (${MODE_NAMES[Net.mode]}${Net.mode === 'qr' ? '' : ` · code ${Net.code}`}) — ${Net.hasController ? 'remote connected ✓' : 'no remote yet'}.`
+    : `Remote for ${Net.mode === 'qr' ? 'the QR-paired display' : `display <b>${Net.code}</b>`} (${MODE_NAMES[Net.mode]}) — ${Net.hasDisplay ? 'connected ✓' : 'looking for the display…'}`;
 }
+
+function syncDisplayScreen() {
+  const st = $('#displayStatus');
+  const codeMode = Net.mode !== 'qr';
+  $('#displayCode').hidden = !codeMode;
+  $('#displayCode').textContent = Net.code || '----';
+  $('#displayHint').innerHTML = Net.mode === 'relay'
+    ? 'On your phone, open this same address, tap <b>Connect</b> and enter:'
+    : Net.mode === 'online' ? 'On your phone, open this app, tap <b>Connect</b> and enter:'
+    : 'Paired with QR code.';
+  if (Net.hasController) { st.textContent = '✓ Remote connected — waiting for a drill'; st.className = 'status ok'; }
+  else if (codeMode && !Net.online) { st.textContent = Net.mode === 'online' ? 'Connecting to the pairing service…' : 'Connecting to the local server…'; st.className = 'status'; }
+  else { st.textContent = 'Waiting for a remote…'; st.className = 'status'; }
+}
+
+function showConnError(text) { $('#connError').textContent = text; $('#connError').hidden = !text; }
 
 function bindConnect() {
   const dlg = $('#connDialog');
-  $('#hostHint').textContent = location.host || 'http://<your-mac-ip>:8080';
   $('#connBtn').addEventListener('click', () => {
-    $('#connError').hidden = true;
-    if (location.protocol === 'file:') { $('#connError').textContent = 'Start the server (npm start) and open the http:// address to use multiple devices.'; $('#connError').hidden = false; }
+    showConnError(location.protocol === 'file:' ? 'Open the app over http(s) — e.g. GitHub Pages or npm start — to connect devices.' : '');
     syncConnUi(); dlg.showModal();
   });
-  $('#beDisplay').addEventListener('click', () => { dlg.close(); enterDisplayMode(); });
+  $('#dispOnline').addEventListener('click', () => { dlg.close(); enterDisplayMode('online'); });
+  $('#dispRelay').addEventListener('click', () => { dlg.close(); enterDisplayMode('relay'); });
   const join = () => {
     const code = $('#codeInput').value.replace(/\D/g, '');
-    if (code.length !== 4) { $('#connError').textContent = 'Enter the 4-digit code shown on the display.'; $('#connError').hidden = false; return; }
-    Net.start('relay', 'controller', code);
+    let mode = null;
+    if (code.length === TRANSPORTS.online.codeLength) mode = 'online';
+    else if (code.length === TRANSPORTS.relay.codeLength && Net.relayAvailable) mode = 'relay';
+    if (!mode) {
+      showConnError(code.length === 4 ? '4-digit codes only work when the app is opened from the local server (npm start).'
+        : 'Enter the code shown on the big screen.');
+      return;
+    }
+    Net.start(mode, 'controller', code);
     dlg.close();
     toast(`Connecting to display ${code}…`);
-    setTimeout(() => { if (Net.isController && !Net.hasDisplay) toast(`No display with code ${code} found yet`); }, 3000);
+    if (mode === 'relay') setTimeout(() => { if (Net.isController && !Net.hasDisplay) toast(`No display with code ${code} found yet`); }, 3000);
   };
   $('#joinBtn').addEventListener('click', join);
   $('#codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); join(); } });
