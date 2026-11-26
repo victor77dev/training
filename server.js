@@ -35,6 +35,12 @@ const server = http.createServer((req, res) => {
   const room = (url.searchParams.get('room') || '').replace(/\D/g, '').slice(0, 6);
   const id = (url.searchParams.get('id') || '').slice(0, 40);
 
+  // Lets the app detect that it is served by this relay (vs. static hosting like GitHub Pages)
+  if (url.pathname === '/api/ping') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    return res.end('{"relay":true}');
+  }
+
   if (url.pathname === '/events') {
     const role = url.searchParams.get('role') === 'display' ? 'display' : 'controller';
     if (!room || !id) { res.writeHead(400); return res.end(); }
