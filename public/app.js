@@ -313,35 +313,6 @@ class Session {
   }
 }
 
-/* ------------------------------ Networking ---------------------------- */
-const Net = {
-  id: sessionStorage.getItem('rt.id') || (() => { const v = Math.random().toString(36).slice(2, 12); sessionStorage.setItem('rt.id', v); return v; })(),
-  role: null, room: null, es: null, peers: { display: 0, controller: 0 }, online: false,
-  connect(role, room) {
-    this.disconnect(true);
-    this.role = role; this.room = room;
-    sessionStorage.setItem('rt.conn', JSON.stringify({ role, room }));
-    this.es = new EventSource(`events?room=${room}&role=${role}&id=${this.id}`);
-    this.es.onopen = () => { this.online = true; onNetChange(); };
-    this.es.onerror = () => { this.online = false; onNetChange(); };
-    this.es.onmessage = (e) => { try { onNetMessage(JSON.parse(e.data)); } catch (err) { console.error(err); } };
-    onNetChange();
-  },
-  disconnect(silent) {
-    this.es?.close(); this.es = null;
-    this.role = null; this.room = null; this.online = false; this.peers = { display: 0, controller: 0 };
-    if (!silent) { sessionStorage.removeItem('rt.conn'); onNetChange(); }
-  },
-  send(msg) {
-    if (!this.room) return;
-    fetch(`send?room=${this.room}&id=${this.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(msg) })
-      .catch(() => toast('Could not reach the server'));
-  },
-  get isController() { return this.role === 'controller'; },
-  get isDisplay() { return this.role === 'display'; },
-  get hasDisplay() { return this.isController && this.online && this.peers.display > 0; },
-};
-
 /* ------------------------------ Screens ------------------------------- */
 function show(id) {
   for (const s of $$('.screen')) s.hidden = s.id !== id;
@@ -663,13 +634,12 @@ function onRemoteStatus(m) {
 }
 
 /* ------------------------------ Display side -------------------------- */
-function enterDisplayMode() {
-  const code = String(Math.floor(1000 + Math.random() * 9000));
-  Net.connect('display', code);
+function enterDisplayMode(mode = 'relay') {
+  Net.start(mode, 'display', randomCode(TRANSPORTS[mode].codeLength));
   showDisplayWait();
 }
 function showDisplayWait() {
-  $('#displayCode').textContent = Net.room || '----';
+  $('#displayCode').textContent = Net.code || '----';
   session?.stop();
   show('display');
   syncConnUi();
@@ -686,7 +656,6 @@ function bindDisplay() {
 
 /* ------------------------------ Net events ---------------------------- */
 function onNetMessage(m) {
-  if (m.type === 'peers') { Net.peers = { display: m.display || 0, controller: m.controller || 0 }; onNetChange(); return; }
   if (Net.isDisplay) {
     if (m.type === 'start') { lastConfig = m.config; runLocal(mergeConfig(m.config), { remote: true }); }
     else if (m.type === 'pause') session?.pause();
@@ -705,27 +674,27 @@ function syncConnUi() {
   const btn = $('#connBtn'), label = $('#connLabel');
   btn.classList.remove('on', 'wait');
   if (!Net.role) label.textContent = 'Connect';
-  else if (Net.isDisplay) { label.textContent = `Display ${Net.room}`; btn.classList.add(Net.online ? 'on' : 'wait'); }
+  else if (Net.isDisplay) { label.textContent = `Display ${Net.code}`; btn.classList.add(Net.online ? 'on' : 'wait'); }
   else {
     const ok = Net.hasDisplay;
-    label.textContent = ok ? `Display ${Net.room}` : `Waiting ${Net.room}…`;
+    label.textContent = ok ? `Display ${Net.code}` : `Waiting ${Net.code}…`;
     btn.classList.add(ok ? 'on' : 'wait');
   }
   const rc = $('#remoteConn');
   rc.className = `pill ${Net.hasDisplay ? 'on' : 'wait'}`;
-  rc.innerHTML = `<span class="dot"></span>${Net.hasDisplay ? `Display ${Net.room}` : 'Display offline'}`;
+  rc.innerHTML = `<span class="dot"></span>${Net.hasDisplay ? `Display ${Net.code}` : 'Display offline'}`;
 
   if (Net.isDisplay) {
     const st = $('#displayStatus');
-    $('#displayCode').textContent = Net.room;
+    $('#displayCode').textContent = Net.code;
     if (!Net.online) { st.textContent = 'Connecting to server…'; st.className = 'status'; }
     else if (Net.peers.controller > 0) { st.textContent = '✓ Phone connected — waiting for a drill'; st.className = 'status ok'; }
     else { st.textContent = 'Waiting for a controller…'; st.className = 'status'; }
   }
   // dialog state
   $('#connIdle').hidden = !!Net.role; $('#connActive').hidden = !Net.role;
-  $('#connActiveText').innerHTML = Net.isDisplay ? `This device is <b>display ${Net.room}</b>.`
-    : Net.isController ? `Controlling <b>display ${Net.room}</b> — ${Net.hasDisplay ? 'connected ✓' : 'display not found yet'}.` : '';
+  $('#connActiveText').innerHTML = Net.isDisplay ? `This device is <b>display ${Net.code}</b>.`
+    : Net.isController ? `Controlling <b>display ${Net.code}</b> — ${Net.hasDisplay ? 'connected ✓' : 'display not found yet'}.` : '';
 }
 
 function bindConnect() {
@@ -740,7 +709,7 @@ function bindConnect() {
   const join = () => {
     const code = $('#codeInput').value.replace(/\D/g, '');
     if (code.length !== 4) { $('#connError').textContent = 'Enter the 4-digit code shown on the display.'; $('#connError').hidden = false; return; }
-    Net.connect('controller', code);
+    Net.start('relay', 'controller', code);
     dlg.close();
     toast(`Connecting to display ${code}…`);
     setTimeout(() => { if (Net.isController && !Net.hasDisplay) toast(`No display with code ${code} found yet`); }, 3000);
@@ -763,11 +732,14 @@ bindDisplay();
 bindConnect();
 syncSetup();
 
-// Restore previous connection (e.g. after a reload)
-let prev = null;
-try { prev = JSON.parse(sessionStorage.getItem('rt.conn')); } catch {}
-if (prev && location.protocol !== 'file:') {
-  Net.connect(prev.role, prev.room);
-  if (prev.role === 'display') showDisplayWait();
-}
+Net.onMessage = onNetMessage;
+Net.onChange = onNetChange;
+Net.onError = toast;
 syncConnUi();
+
+// Detect the local relay, then restore a previous connection (e.g. after a reload)
+Net.detectRelay().then(() => {
+  const prev = Net.restore();
+  if (prev?.role === 'display') showDisplayWait();
+  syncConnUi();
+});
