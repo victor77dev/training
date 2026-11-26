@@ -86,16 +86,20 @@ const DEFAULT_CONFIG = {
   durationType: 'rounds', rounds: 10, unlimited: false, time: 60,
   sets: 1, rest: 30, countdown: 3,
 };
+// Values offered in each pick list. A saved value not in the list is added to it.
+const range = (from, to, step) => { const out = []; for (let v = from; v <= to + 1e-9; v += step) out.push(Math.round(v * 10) / 10); return out; };
+const SECS = [...range(0.1, 1, 0.1), 1.2, 1.5, 1.8, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 10];
+const fmtSec = (v) => `${v.toFixed(1)} s`;
 const STEPPERS = {
-  length:    { t: 'Show cue for', s: 'Seconds on screen', min: 0.1, max: 10, step: 0.1, fmt: (v) => `${v.toFixed(1)} s` },
-  lengthMax: { t: 'Up to', s: 'Random between min and this', min: 0.1, max: 15, step: 0.1, fmt: (v) => `${v.toFixed(1)} s` },
-  delay:     { t: 'Gap between cues', s: 'Blank screen in between', min: 0, max: 10, step: 0.1, fmt: (v) => `${v.toFixed(1)} s` },
-  delayMax:  { t: 'Up to', s: 'Random between min and this', min: 0, max: 15, step: 0.1, fmt: (v) => `${v.toFixed(1)} s` },
-  rounds:    { t: 'Cues per set', s: 'How many cues appear', min: 1, max: 500, step: 1, fmt: (v) => `${v}` },
-  time:      { t: 'Set length', s: 'Minutes : seconds', min: 5, max: 3600, step: 5, fmt: fmtTime },
-  sets:      { t: 'Sets', s: 'Repeat the block', min: 1, max: 20, step: 1, fmt: (v) => `${v}` },
-  rest:      { t: 'Rest between sets', s: 'Minutes : seconds', min: 5, max: 600, step: 5, fmt: fmtTime },
-  countdown: { t: 'Start countdown', s: 'Get ready time', min: 0, max: 10, step: 1, fmt: (v) => `${v} s` },
+  length:    { t: 'Show cue for', s: 'Seconds on screen', values: SECS, fmt: fmtSec },
+  lengthMax: { t: 'Up to', s: 'Random between min and this', values: [...SECS, 12, 15], fmt: fmtSec },
+  delay:     { t: 'Gap between cues', s: 'Blank screen in between', values: [0, ...SECS], fmt: fmtSec },
+  delayMax:  { t: 'Up to', s: 'Random between min and this', values: [0, ...SECS, 12, 15], fmt: fmtSec },
+  rounds:    { t: 'Cues per set', s: 'How many cues appear', values: [...range(1, 20, 1), 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 120, 150, 200, 250, 300, 400, 500], fmt: (v) => `${v}` },
+  time:      { t: 'Set length', s: 'Minutes : seconds', values: [10, 15, 20, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600, 900, 1200, 1800, 2700, 3600], fmt: fmtTime },
+  sets:      { t: 'Sets', s: 'Repeat the block', values: range(1, 20, 1), fmt: (v) => `${v}` },
+  rest:      { t: 'Rest between sets', s: 'Minutes : seconds', values: [5, 10, 15, 20, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300, 360, 420, 480, 600], fmt: fmtTime },
+  countdown: { t: 'Start countdown', s: 'Get ready time', values: range(0, 10, 1), fmt: (v) => `${v} s` },
 };
 
 let config = mergeConfig(store.get('rt.config', null));
@@ -371,24 +375,12 @@ function buildSetup() {
     changed();
   });
 
-  // steppers
+  // pick lists (native <select>: wheel on iPhone, list on Android)
   for (const el of $$('[data-stepper]')) {
     const k = el.dataset.stepper, d = STEPPERS[k];
-    el.innerHTML = `<div class="lbl-wrap"><div class="lbl-t">${d.t}</div><div class="lbl-s">${d.s}</div></div>
-      <div class="stepper"><button type="button" data-d="-1" aria-label="Decrease">−</button><output></output><button type="button" data-d="1" aria-label="Increase">+</button></div>`;
-    let holdT, holdI;
-    const bump = (dir) => {
-      const v = Math.round((config[k] + dir * d.step) * 1000) / 1000;
-      config[k] = Math.min(d.max, Math.max(d.min, v)); changed();
-    };
-    const stopHold = () => { clearTimeout(holdT); clearInterval(holdI); };
-    el.addEventListener('pointerdown', (e) => {
-      const b = e.target.closest('button[data-d]'); if (!b) return;
-      e.preventDefault();
-      const dir = Number(b.dataset.d); bump(dir);
-      holdT = setTimeout(() => (holdI = setInterval(() => bump(dir), 70)), 400);
-    });
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => el.addEventListener(ev, stopHold));
+    el.innerHTML = `<label class="lbl-wrap" for="pick-${k}"><div class="lbl-t">${d.t}</div><div class="lbl-s">${d.s}</div></label>
+      <div class="picker"><select id="pick-${k}"></select></div>`;
+    $('select', el).addEventListener('change', (e) => { config[k] = Number(e.target.value); changed(); });
   }
 
   // switches
@@ -421,6 +413,17 @@ function buildSetup() {
   });
 }
 
+// Fill a pick list with its values (plus the current one if it isn't listed) and select it.
+function syncPicker(el) {
+  const k = el.dataset.stepper, d = STEPPERS[k], sel = $('select', el), cur = Number(config[k]);
+  const values = d.values.includes(cur) ? d.values : [...d.values, cur].sort((a, b) => a - b);
+  if (sel.dataset.list !== values.join(',')) {
+    sel.innerHTML = values.map((v) => `<option value="${v}">${d.fmt(v)}</option>`).join('');
+    sel.dataset.list = values.join(',');
+  }
+  sel.value = String(cur);
+}
+
 function evalCond(cond) {
   const m = cond.match(/^(\w+)(=|>)(.+)$/);
   if (!m) return !!config[cond];
@@ -442,7 +445,7 @@ function syncSetup() {
     $('.count', box).textContent = sel.size ? ` · ${sel.size}` : '';
     $('[data-act="speak"]', box).classList.toggle('on', !!config.speak[cat]);
   }
-  for (const el of $$('[data-stepper]')) $('output', el).textContent = STEPPERS[el.dataset.stepper].fmt(config[el.dataset.stepper]);
+  for (const el of $$('[data-stepper]')) syncPicker(el);
   for (const el of $$('input[data-opt]')) el.checked = !!config[el.dataset.opt];
   for (const seg of $$('[data-seg]')) for (const b of $$('button', seg)) b.classList.toggle('on', config[seg.dataset.seg] === b.dataset.val);
   for (const el of $$('[data-show]')) el.hidden = !evalCond(el.dataset.show);

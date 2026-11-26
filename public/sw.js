@@ -2,7 +2,7 @@
 // Offline support: cache the app so it opens without internet after the first visit.
 // Strategy: network first (so updates show immediately), falling back to the cache
 // when offline or the network is too slow. Bump VERSION to force a clean cache.
-const VERSION = 'rt-v6';
+const VERSION = 'rt-v7';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'net.js', 'pair.js',
   'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
