@@ -45,7 +45,7 @@ On the big screen, tap **Enable sound & full screen** once, because browsers blo
 - Results: cues shown, active time, average/fastest/slowest reaction, a chart per cue, a breakdown per cue,
   and one-tap Repeat.
 - App theme: light by default (even in phone Dark Mode). The ☀️/🌙/🌗 button switches Light / Dark / Auto.
-- Saved drills (stored in the browser). Keeps the screen awake where supported.
+- Saved drills (stored in the browser). The loaded drill is highlighted; after changing settings it shows **edited** with an **Update** button to save the changes back (tap the drill to discard them). Keeps the screen awake where supported.
 - Keyboard during a session: Space/Enter = tap, P = pause, Esc = stop.
 
 ## GitHub Pages setup (one time)
