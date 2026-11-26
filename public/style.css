@@ -147,6 +147,13 @@ input { font: inherit; }
 .presets li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
 .presets li button.load { flex: 1; text-align: left; border: 0; background: none; padding: 6px 0; font-weight: 600; }
 .presets li .meta { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+.presets li.active { margin: 0 -8px; padding: 8px; border-radius: 10px; background: var(--accent-soft); border-top-color: transparent; }
+.presets li.active + li { border-top-color: transparent; }
+.presets .badge {
+  display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; vertical-align: 2px;
+  font-size: 11px; font-weight: 600; background: var(--card); color: var(--muted); border: 1px solid var(--line);
+}
+.presets .badge.edited { color: #b45309; border-color: #f59e0b; }
 .presets .empty { color: var(--muted); font-size: 14px; border: 0; }
 
 /* start bar */

@@ -407,8 +407,17 @@ function buildSetup() {
     const b = e.target.closest('button'); if (!b) return;
     const presets = store.get('rt.presets', []);
     const i = Number(b.dataset.i);
-    if (b.dataset.act === 'load') { config = mergeConfig(presets[i].config); changed(); toast(`Loaded “${presets[i].name}”`); }
-    if (b.dataset.act === 'del') { presets.splice(i, 1); store.set('rt.presets', presets); renderPresets(); }
+    if (!presets[i]) return;
+    if (b.dataset.act === 'load') {
+      config = mergeConfig(presets[i].config);
+      setActivePreset(presets[i].name);
+      changed(); toast(`Loaded “${presets[i].name}”`);
+    }
+    if (b.dataset.act === 'update') updatePreset(i);
+    if (b.dataset.act === 'del') {
+      if (presets[i].name === activePreset()) setActivePreset(null);
+      presets.splice(i, 1); store.set('rt.presets', presets); renderPresets();
+    }
   });
 }
 
@@ -475,15 +484,42 @@ function savePreset() {
   const entry = { name, config: structuredClone(config) };
   if (i >= 0) presets[i] = entry; else presets.unshift(entry);
   store.set('rt.presets', presets);
+  setActivePreset(name);           // the saved drill is now the loaded one
   $('#presetName').value = '';
   renderPresets(); toast(`Saved “${name}”`);
+}
+
+// The saved drill that was last loaded (or saved), so edits can be written back to it.
+const activePreset = () => store.get('rt.activePreset', null);
+const setActivePreset = (name) => store.set('rt.activePreset', name);
+
+// Key-order independent comparison of two configs
+function sameConfig(a, b) {
+  const norm = (v) => Array.isArray(v) ? v.map(norm)
+    : v && typeof v === 'object' ? Object.keys(v).sort().reduce((o, k) => ((o[k] = norm(v[k])), o), {}) : v;
+  return JSON.stringify(norm(mergeConfig(a))) === JSON.stringify(norm(mergeConfig(b)));
+}
+
+function updatePreset(i) {
+  const presets = store.get('rt.presets', []);
+  if (!presets[i]) return;
+  presets[i] = { ...presets[i], config: structuredClone(config) };
+  store.set('rt.presets', presets);
+  renderPresets(); toast(`Updated “${presets[i].name}”`);
 }
 function renderPresets() {
   const presets = store.get('rt.presets', []);
   $('#presetList').innerHTML = presets.length
-    ? presets.map((p, i) => { const d = describe(mergeConfig(p.config)); return `<li>
-        <button type="button" class="load" data-act="load" data-i="${i}">${escapeHtml(p.name)}<span class="meta">${d.what} · ${p.config.mode === 'touch' ? 'tap' : 'timed'}</span></button>
-        <button type="button" class="mini-btn" data-act="del" data-i="${i}" aria-label="Delete">✕</button></li>`; }).join('')
+    ? presets.map((p, i) => {
+        const d = describe(mergeConfig(p.config));
+        const active = p.name === activePreset();
+        const edited = active && !sameConfig(p.config, config);
+        const badge = active ? `<span class="badge${edited ? ' edited' : ''}">${edited ? 'edited' : 'loaded'}</span>` : '';
+        return `<li class="${active ? 'active' : ''}">
+        <button type="button" class="load" data-act="load" data-i="${i}" title="${edited ? 'Tap to discard changes and reload' : 'Load this drill'}">${escapeHtml(p.name)}${badge}<span class="meta">${d.what} · ${p.config.mode === 'touch' ? 'tap' : 'timed'}</span></button>
+        ${edited ? `<button type="button" class="btn small primary" data-act="update" data-i="${i}">Update</button>` : ''}
+        <button type="button" class="mini-btn" data-act="del" data-i="${i}" aria-label="Delete ${escapeHtml(p.name)}">✕</button></li>`;
+      }).join('')
     : '<li class="empty">No saved drills yet. Set one up below, then save it here.</li>';
 }
 const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
