@@ -3,7 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#0e1116">
+  <meta name="theme-color" content="#f4f5f7">
+  <script>
+    // Apply the saved app theme before first paint (default: light)
+    try { document.documentElement.dataset.theme = localStorage.getItem('rt.theme') || 'light'; }
+    catch (e) { document.documentElement.dataset.theme = 'light'; }
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Reaction Trainer</title>
@@ -16,7 +21,10 @@
 <section id="setup" class="screen">
   <header class="topbar">
     <h1>Reaction <span>Trainer</span></h1>
+    <div class="top-actions">
+    <button id="themeBtn" class="pill icon-pill" type="button" aria-label="App theme">☀️</button>
     <button id="connBtn" class="pill" type="button"><span class="dot"></span><span id="connLabel">Connect</span></button>
+    </div>
   </header>
 
   <main class="setup-body">

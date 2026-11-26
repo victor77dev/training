@@ -773,6 +773,30 @@ function bindConnect() {
   });
 }
 
+/* ------------------------------ App theme ----------------------------- */
+// Light by default regardless of the phone's dark mode; the button cycles Light → Dark → Auto.
+const THEMES = { light: { icon: '☀️', label: 'Light' }, dark: { icon: '🌙', label: 'Dark' }, auto: { icon: '🌗', label: 'Auto (follow phone)' } };
+function currentTheme() { const t = document.documentElement.dataset.theme; return THEMES[t] ? t : 'light'; }
+function applyAppTheme(t) {
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('rt.theme', t); } catch {}
+  const btn = $('#themeBtn');
+  btn.textContent = THEMES[t].icon;
+  btn.title = btn.ariaLabel = `App theme: ${THEMES[t].label}`;
+  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name="theme-color"]').content = dark ? '#0e1116' : '#f4f5f7';
+}
+function bindTheme() {
+  applyAppTheme(currentTheme());
+  $('#themeBtn').addEventListener('click', () => {
+    const order = ['light', 'dark', 'auto'];
+    const next = order[(order.indexOf(currentTheme()) + 1) % order.length];
+    applyAppTheme(next);
+    toast(`App theme: ${THEMES[next].label}`);
+  });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => applyAppTheme(currentTheme()));
+}
+
 /* -------------------------------- Init -------------------------------- */
 buildSetup();
 bindRunControls();
@@ -780,6 +804,7 @@ bindStats();
 bindRemote();
 bindDisplay();
 bindConnect();
+bindTheme();
 Pair.bind();
 syncSetup();
 

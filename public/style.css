@@ -11,13 +11,22 @@
   --danger: #dc2626;
   --stage: #0e1116;
   --radius: 16px;
+  color-scheme: light;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
 }
+/* App theme: light by default whatever the phone's setting is.
+   data-theme="dark" forces dark; data-theme="auto" follows the system. */
+:root[data-theme="dark"] {
+  --bg: #0e1116; --card: #171b22; --text: #e8eaed; --muted: #9aa3ae;
+  --line: #262c35; --chip: #20262f; --accent: #14b8a6; --accent-ink: #04201d; --accent-soft: #0f3b37;
+  color-scheme: dark;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root[data-theme="auto"] {
     --bg: #0e1116; --card: #171b22; --text: #e8eaed; --muted: #9aa3ae;
     --line: #262c35; --chip: #20262f; --accent: #14b8a6; --accent-ink: #04201d; --accent-soft: #0f3b37;
+    color-scheme: dark;
   }
 }
 
@@ -51,6 +60,8 @@ input { font: inherit; }
   border: 1px solid var(--line); background: var(--card);
   padding: 8px 12px; border-radius: 999px; font-size: 14px; white-space: nowrap;
 }
+.top-actions { display: flex; gap: 8px; align-items: center; }
+.icon-pill { padding: 8px 10px; line-height: 1; }
 .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .pill.on .dot { background: #22c55e; box-shadow: 0 0 0 3px #22c55e33; }
 .pill.wait .dot { background: #f59e0b; }
@@ -78,7 +89,7 @@ input { font: inherit; }
 .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 8px; }
 .chip {
   aspect-ratio: 1; border-radius: 12px; border: 2px solid transparent;
-  background: var(--chip); display: grid; place-items: center;
+  background: var(--chip); display: flex; align-items: center; justify-content: center; min-width: 0;
   font-weight: 700; font-size: 20px; padding: 0; opacity: .45; transition: opacity .12s, border-color .12s, transform .08s;
 }
 .chip:active { transform: scale(.94); }
@@ -86,8 +97,9 @@ input { font: inherit; }
 .chip.na { opacity: .2; border-style: dashed; }
 .bg-row { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; }
 .bg-row .seg { margin-bottom: 4px; }
-.chip svg { width: 62%; height: 62%; }
-.chip .swatch { width: 64%; height: 64%; border-radius: 50%; box-shadow: inset 0 0 0 1px #0002; }
+.chip svg { display: block; width: 62%; height: auto; aspect-ratio: 1; }
+/* Size by width + aspect-ratio: a % height inside the grid resolves to 0 on older iOS Safari */
+.chip .swatch { display: block; width: 64%; height: auto; aspect-ratio: 1; border-radius: 50%; box-shadow: inset 0 0 0 1px #0003; }
 
 .opts { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
 
@@ -167,7 +179,7 @@ input { font: inherit; }
 
 /* ---------- stage / stimuli ---------- */
 .stim { display: flex; align-items: center; justify-content: center; background: var(--stage); color: #fff; position: relative; overflow: hidden; }
-.stim svg { width: 82%; height: 82%; max-height: 82%; }
+.stim svg { position: absolute; top: 9%; left: 9%; width: 82%; height: 82%; }
 .stim .count-num { font-size: min(50vw, 50vh); font-weight: 800; font-variant-numeric: tabular-nums; animation: pop .9s ease-out; }
 .stim .msg { text-align: center; font-size: clamp(22px, 6vmin, 64px); font-weight: 700; padding: 16px; }
 .stim .msg small { display: block; font-size: .45em; font-weight: 500; opacity: .7; margin-top: .4em; }
