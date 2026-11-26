@@ -37,6 +37,8 @@ On the big screen, tap **Enable sound & full screen** once, because browsers blo
 
 - Cues: 8 colours, 8 arrow directions, numbers 1–9, letters A–Z, 8 shapes. Can call them out loud (🔊),
   colour the symbols (e.g. a red left arrow), avoid repeats, beep on each cue, audio-only mode.
+- Screen between cues: **Dark** or **White**. On white, symbols turn black and coloured symbols get a thin outline.
+  The colour matching the background (black on dark, white on white) is skipped automatically.
 - Timing: **Timed** (show-for plus gap, both optionally random within a range), or **Tap to advance**, which
   measures your reaction time.
 - Duration: a number of cues (or unlimited) or a fixed time, multiple sets with rest, and a start countdown.

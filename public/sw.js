@@ -2,7 +2,7 @@
 // Offline support: cache the app shell so it opens without internet after the first visit.
 // Strategy: serve from cache immediately, refresh the cache in the background
 // (a new version shows up on the next launch). Bump VERSION to force a clean cache.
-const VERSION = 'rt-v1';
+const VERSION = 'rt-v2';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'net.js', 'pair.js',
   'manifest.webmanifest', 'icon.svg',

@@ -44,6 +44,7 @@ const CATS = {
       { id: 'orange', label: 'Orange', hex: '#ff7a00' },
       { id: 'pink', label: 'Pink', hex: '#ff4fa3' },
       { id: 'white', label: 'White', hex: '#ffffff' },
+      { id: 'black', label: 'Black', hex: '#000000' },
     ],
   },
   arrows: {
@@ -78,6 +79,7 @@ const DEFAULT_CONFIG = {
   sel: { colors: ['red', 'blue', 'green', 'yellow'], arrows: [], numbers: [], letters: [], shapes: [] },
   speak: { colors: false, arrows: false, numbers: false, letters: false, shapes: false },
   combine: false, noRepeat: true, beep: false, audioOnly: false,
+  background: 'dark',              // screen between cues: 'dark' | 'light'
   mode: 'timed',
   length: 1.0, randomLength: false, lengthMax: 2.0,
   delay: 1.0, randomDelay: false, delayMax: 2.0,
@@ -148,11 +150,24 @@ function glyphSvg(cat, item, fill) {
   else inner = `<text x="50" y="54" text-anchor="middle" dominant-baseline="middle" font-size="88" font-weight="800" font-family="system-ui,-apple-system,sans-serif">${item.text}</text>`;
   return `<svg viewBox="0 0 100 100" fill="${fill}" aria-hidden="true">${inner}</svg>`;
 }
+// The theme comes from the element: a `.light` ancestor means white background.
 function renderStim(el, s) {
   el.style.background = '';
   if (s.cat === 'colors') { el.innerHTML = ''; el.style.background = itemOf('colors', s.id).hex; return; }
-  const fill = s.color ? itemOf('colors', s.color).hex : '#ffffff';
-  el.innerHTML = glyphSvg(s.cat, itemOf(s.cat, s.id), fill);
+  const light = !!el.closest('.light');
+  const fill = s.color ? itemOf('colors', s.color).hex : light ? '#111111' : '#ffffff';
+  let svg = glyphSvg(s.cat, itemOf(s.cat, s.id), fill);
+  // Thin outline keeps light colours (e.g. yellow) readable on white
+  if (light && s.color) svg = svg.replace('<svg ', '<svg stroke="rgba(0,0,0,.35)" stroke-width="1.2" paint-order="stroke" ');
+  el.innerHTML = svg;
+}
+const isLight = (cfg) => cfg.background === 'light';
+function applyTheme(cfg, ...els) { for (const el of els) el.classList.toggle('light', isLight(cfg)); }
+// A colour identical to the background would be invisible, so it is skipped.
+const hiddenColor = (cfg) => (isLight(cfg) ? 'white' : 'black');
+function activeSel(cfg) {
+  const hide = hiddenColor(cfg);
+  return { ...cfg.sel, colors: (cfg.sel.colors || []).filter((c) => c !== hide) };
 }
 function renderBlank(el) { el.style.background = ''; el.innerHTML = ''; }
 function renderMsg(el, html) { el.style.background = ''; el.innerHTML = `<div class="msg">${html}</div>`; }
@@ -161,19 +176,20 @@ function renderPulse(el) { el.style.background = ''; el.innerHTML = '<div class=
 
 /* ---------------------------- Cue picker ------------------------------ */
 function makePicker(cfg) {
-  const cats = Object.keys(CATS).filter((c) => cfg.sel[c]?.length);
-  const colors = cfg.sel.colors || [];
+  const sel = activeSel(cfg);
+  const cats = Object.keys(CATS).filter((c) => sel[c]?.length);
+  const colors = sel.colors;
   const symbolCats = cats.filter((c) => c !== 'colors');
   const combine = cfg.combine && colors.length && symbolCats.length;
   const poolCats = combine ? symbolCats : cats;
   let last = null;
   const one = () => {
     const cat = pickOne(poolCats);
-    const s = { cat, id: pickOne(cfg.sel[cat]) };
+    const s = { cat, id: pickOne(sel[cat]) };
     if (combine) s.color = pickOne(colors);
     return s;
   };
-  const total = poolCats.reduce((n, c) => n + cfg.sel[c].length, 0) * (combine ? colors.length : 1);
+  const total = poolCats.reduce((n, c) => n + sel[c].length, 0) * (combine ? colors.length : 1);
   return () => {
     let s = one();
     if (cfg.noRepeat && total > 1) for (let i = 0; i < 30 && last && stimKey(s) === stimKey(last); i++) s = one();
@@ -181,7 +197,7 @@ function makePicker(cfg) {
     return s;
   };
 }
-function cueCount(cfg) { return Object.keys(CATS).reduce((n, c) => n + (cfg.sel[c]?.length || 0), 0); }
+function cueCount(cfg) { const sel = activeSel(cfg); return Object.keys(CATS).reduce((n, c) => n + (sel[c]?.length || 0), 0); }
 
 /* ---------------------------- Session engine -------------------------- */
 const ABORT = Symbol('abort');
@@ -408,7 +424,12 @@ function syncSetup() {
   for (const [cat] of Object.entries(CATS)) {
     const box = $(`.cat[data-cat="${cat}"]`);
     const sel = new Set(config.sel[cat]);
-    for (const ch of $$('.chip', box)) ch.classList.toggle('on', sel.has(ch.dataset.id));
+    for (const ch of $$('.chip', box)) {
+      ch.classList.toggle('on', sel.has(ch.dataset.id));
+      const hidden = cat === 'colors' && ch.dataset.id === hiddenColor(config);
+      ch.classList.toggle('na', hidden);
+      ch.title = hidden ? `${ch.getAttribute('aria-label')} — not shown on a ${isLight(config) ? 'white' : 'dark'} background` : ch.getAttribute('aria-label');
+    }
     $('.count', box).textContent = sel.size ? ` · ${sel.size}` : '';
     $('[data-act="speak"]', box).classList.toggle('on', !!config.speak[cat]);
   }
@@ -493,6 +514,7 @@ function start() {
 function runLocal(cfg, { remote = false } = {}) {
   session?.stop();
   const stage = $('#stage'), info = $('#hudInfo');
+  applyTheme(cfg, stage, $('#run'));
   const relay = (m) => { if (remote) Net.send(m); };
   const progress = (set, round, timeLeft) => {
     const p = [];
@@ -565,7 +587,7 @@ function showStats(stats, cfg, { remoteDisplay = false } = {}) {
     <div class="tiles">${tiles.map((t) => `<div class="tile${t.hl ? ' hl' : ''}"><div class="v">${t.v}</div><div class="k">${t.k}</div></div>`).join('')}</div>
     ${rts.length > 1 ? `<section class="card"><h2>Reaction time per cue</h2><p class="hint">Green = fastest, dashed line = average</p>${rtChart(rts, avg)}</section>` : ''}
     ${entries.length ? `<section class="card"><h2>Cue breakdown</h2><p class="hint">How often each cue appeared${rts.length ? ' and your average reaction' : ''}</p>
-      <div class="breakdown">${entries.map((e) => `<div class="bd-item"><div class="stim" data-stim='${JSON.stringify(e.stim)}'></div>
+      <div class="breakdown">${entries.map((e) => `<div class="bd-item"><div class="stim${isLight(cfg) ? ' light' : ''}" data-stim='${JSON.stringify(e.stim)}'></div>
         <div class="n">${e.n}×${e.rts.length ? `<small>${fmtMs(e.rts.reduce((a, b) => a + b, 0) / e.rts.length)} ms</small>` : ''}</div></div>`).join('')}</div></section>` : ''}
   `;
   for (const el of $$('[data-stim]', body)) renderStim(el, JSON.parse(el.dataset.stim));
@@ -601,6 +623,7 @@ let remoteMode = null;
 function startRemote(cfg) {
   remoteMode = cfg.mode;
   Net.send({ type: 'start', config: cfg });
+  applyTheme(cfg, $('#mirror'));
   renderMsg($('#mirror'), 'Starting…');
   $('#remoteInfo').textContent = '';
   $('#remoteTap').hidden = cfg.mode !== 'touch';
