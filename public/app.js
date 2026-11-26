@@ -484,7 +484,7 @@ function renderPresets() {
     ? presets.map((p, i) => { const d = describe(mergeConfig(p.config)); return `<li>
         <button type="button" class="load" data-act="load" data-i="${i}">${escapeHtml(p.name)}<span class="meta">${d.what} · ${p.config.mode === 'touch' ? 'tap' : 'timed'}</span></button>
         <button type="button" class="mini-btn" data-act="del" data-i="${i}" aria-label="Delete">✕</button></li>`; }).join('')
-    : '<li class="empty">No saved drills yet.</li>';
+    : '<li class="empty">No saved drills yet. Set one up below, then save it here.</li>';
 }
 const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
