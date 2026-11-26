@@ -114,6 +114,7 @@
     <p id="displayHint" class="muted">On your phone, open this app, tap <b>Connect</b> and enter:</p>
     <div id="displayCode" class="code">----</div>
     <p id="displayStatus" class="status">Waiting for a controller…</p>
+    <button id="displayPairBtn" type="button" class="btn" hidden>Show pairing QR</button>
     <button id="unlockBtn" type="button" class="btn primary">🔊 Tap to enable sound &amp; full screen</button>
   </div>
 </section>
@@ -141,6 +142,7 @@
       <h3 class="sub-h">📺 This device is the big screen</h3>
       <div class="choice-list">
         <button id="dispOnline" type="button" class="choice"><b>Show a pairing code</b><small>Needs internet</small></button>
+        <button id="dispQr" type="button" class="choice"><b>Pair with QR code</b><small>No internet · this device needs a camera</small></button>
         <button id="dispRelay" type="button" class="choice" hidden><b>Show a local code</b><small>Via the server on this network, no internet</small></button>
       </div>
       <h3 class="sub-h">📱 This device is the remote</h3>
@@ -149,6 +151,8 @@
         <input id="codeInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="off">
         <button id="joinBtn" type="button" class="btn primary">Connect</button>
       </div>
+      <div class="or">or</div>
+      <button id="ctrlQr" type="button" class="btn wide">📷 Scan QR from the big screen</button>
     </div>
     <div id="connActive" hidden>
       <p id="connActiveText"></p>
@@ -159,8 +163,31 @@
   </form>
 </dialog>
 
+<!-- ============ QR PAIRING ============ -->
+<dialog id="pairDialog" class="sheet pair">
+  <div class="pair-head">
+    <h2 id="pairTitle">Pair with QR</h2>
+    <button id="pairClose" type="button" class="mini-btn" aria-label="Close">✕</button>
+  </div>
+  <p id="pairText" class="hint"></p>
+  <div id="pairQr" class="pair-qr" hidden></div>
+  <div id="pairCam" class="pair-cam" hidden>
+    <video id="pairVideo" muted playsinline></video>
+    <div class="cam-frame"></div>
+  </div>
+  <button id="pairScanBtn" type="button" class="btn primary wide" hidden>📷 Scan the phone’s reply</button>
+  <p id="pairStatus" class="pair-status"></p>
+  <details id="pairPaste" class="pair-paste">
+    <summary>Can’t scan? Copy &amp; paste instead</summary>
+    <button id="pairCopy" type="button" class="btn small" hidden>Copy this device’s code</button>
+    <textarea id="pairInput" rows="3" placeholder="Paste the other device’s code here" autocomplete="off" spellcheck="false"></textarea>
+    <button id="pairPasteBtn" type="button" class="btn small primary">Use pasted code</button>
+  </details>
+</dialog>
+
 <div id="toast" class="toast" hidden></div>
 <script src="net.js"></script>
+<script src="pair.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

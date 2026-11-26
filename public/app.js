@@ -645,6 +645,7 @@ function showDisplayWait() {
 }
 function bindDisplay() {
   $('#displayExit').addEventListener('click', () => { Net.disconnect(); show('setup'); });
+  $('#displayPairBtn').addEventListener('click', () => Pair.startDisplay());
   $('#unlockBtn').addEventListener('click', () => {
     Sound.unlock(); Sound.beep(880, 0.15);
     try { document.documentElement.requestFullscreen?.()?.catch(() => {}); } catch {}
@@ -667,7 +668,7 @@ function onNetMessage(m) {
   }
 }
 
-function onNetChange() { syncConnUi(); renderSummary(); }
+function onNetChange() { syncConnUi(); renderSummary(); Pair.sync(); }
 
 const MODE_NAMES = { relay: 'local server', online: 'online code', qr: 'QR pairing' };
 
@@ -707,6 +708,7 @@ function syncDisplayScreen() {
     ? 'On your phone, open this same address, tap <b>Connect</b> and enter:'
     : Net.mode === 'online' ? 'On your phone, open this app, tap <b>Connect</b> and enter:'
     : 'Paired with QR code.';
+  $('#displayPairBtn').hidden = Net.mode !== 'qr' || Net.hasController;
   if (Net.hasController) { st.textContent = '✓ Remote connected — waiting for a drill'; st.className = 'status ok'; }
   else if (codeMode && !Net.online) { st.textContent = Net.mode === 'online' ? 'Connecting to the pairing service…' : 'Connecting to the local server…'; st.className = 'status'; }
   else { st.textContent = 'Waiting for a remote…'; st.className = 'status'; }
@@ -722,6 +724,8 @@ function bindConnect() {
   });
   $('#dispOnline').addEventListener('click', () => { dlg.close(); enterDisplayMode('online'); });
   $('#dispRelay').addEventListener('click', () => { dlg.close(); enterDisplayMode('relay'); });
+  $('#dispQr').addEventListener('click', () => { dlg.close(); Pair.startDisplay(); });
+  $('#ctrlQr').addEventListener('click', () => { dlg.close(); Pair.startController(); });
   const join = () => {
     const code = $('#codeInput').value.replace(/\D/g, '');
     let mode = null;
@@ -753,6 +757,7 @@ bindStats();
 bindRemote();
 bindDisplay();
 bindConnect();
+Pair.bind();
 syncSetup();
 
 Net.onMessage = onNetMessage;
