@@ -1,8 +1,8 @@
 'use strict';
-// Offline support: cache the app shell so it opens without internet after the first visit.
-// Strategy: serve from cache immediately, refresh the cache in the background
-// (a new version shows up on the next launch). Bump VERSION to force a clean cache.
-const VERSION = 'rt-v4';
+// Offline support: cache the app so it opens without internet after the first visit.
+// Strategy: network first (so updates show immediately), falling back to the cache
+// when offline or the network is too slow. Bump VERSION to force a clean cache.
+const VERSION = 'rt-v5';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'net.js', 'pair.js',
   'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
@@ -29,15 +29,21 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith((async () => {
     const cache = await caches.open(VERSION);
-    const cached = await cache.match(req, { ignoreSearch: true });
-    const fresh = fetch(req).then((res) => {
-      if (res.ok) cache.put(req, res.clone());
+    try {
+      const res = await fetchWithTimeout(req, 4000);
+      if (res.ok) event.waitUntil(cache.put(req, res.clone()));
       return res;
-    }).catch(() => null);
-    if (cached) { event.waitUntil(fresh); return cached; }
-    const res = await fresh;
-    if (res) return res;
-    if (req.mode === 'navigate') return (await cache.match('index.html')) || Response.error();
-    return Response.error();
+    } catch {
+      const cached = await cache.match(req, { ignoreSearch: true })
+        || (req.mode === 'navigate' && (await cache.match('index.html')));
+      return cached || Response.error();
+    }
   })());
 });
+
+function fetchWithTimeout(req, ms) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    fetch(req).then((r) => { clearTimeout(t); resolve(r); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
